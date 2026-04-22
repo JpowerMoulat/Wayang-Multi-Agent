@@ -1,70 +1,93 @@
 # AI-Wayang-Multi
-A multi-agent system for translating natural-language into executable Apache Wayang plans.
+A multi-agent system for translating natural-language queries into executable Apache Wayang plans.
 
-The system is implemented as a MCP server that can be connected to different MCP clients, for example a LLM chatbot. The system relies on a REST server using the Apache Wayang JSON-REST API for executing plans.
+The system is implemented as a LangGraph pipeline orchestrated via a CLI interface. Six specialized agents (Specifier, Selector, Decomposer, Builder, Refiner, Debugger) collaborate to produce and execute a Wayang JSON plan against a running Apache Wayang JSON-REST API server.
 
 The system was developed as part of the Master Thesis **"Agent-Based Systems for Apache Wayang Plan"**. For a deeper understanding of the system, we recommend reading the thesis report.
 
 # Start
-Start the MCP server by running the main.py file.
+Run the pipeline interactively:
 
-The server starts by default on port 9500.
+```bash
+python main.py
+```
+
+You will be prompted to enter a natural-language query. The system will process it through the agent pipeline and report the result.
 
 # Requirements
 The following components are required to run the system:
 
-- A JSON-REST API server
-- A MCP client to invoke the MCP server (can also be a client testing tool)
+- A running Apache Wayang JSON-REST API server
 - An OpenAI API Key
-- Python with listed dependencies below
+- Python with listed dependencies (see `requirements.txt` or `pyproject.toml`)
 
 # Setup
 
 ## Python and Python Dependencies
 Python 3.12.4 is recommended, as this version has been tested.
 
-All required Python dependencies can be found in the requirements.txt file.
+Dependencies can be installed via UV (recommended):
+
+```bash
+uv sync
+```
+
+Or via pip:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## .env File
-You must create a .env file with the following required variables.
+You must create a `.env` file in the project root with the following variables.
 
 **Required**
 
-OPENAI_API_KEY: API Key to LLMs
-WAYANG_URL: URL to JSON-REST server for plan exection
+```
+OPENAI_API_KEY=        # API key for OpenAI LLMs
+WAYANG_URL=            # URL to the Wayang JSON-REST server
 
-JDBC_URI: JDBC connection string
-JDBC_USERNAME: Username
-JDBC_PASSWORD: Password
+JDBC_URI=              # JDBC connection string
+JDBC_USERNAME=         # Database username
+JDBC_PASSWORD=         # Database password
+```
 
-OR/AND:
+OR/AND (at least one data source must be configured):
 
-INPUT_FOLDER: Path to .txt input files
+```
+INPUT_FOLDER=          # Path to folder containing .txt input files
+```
 
-**Not required, but recommended:**
+**Optional**
 
-LOG_FOLDER: Path for session logs
+```
+LOG_FOLDER=            # Path for session log output (JSON files)
+OUTPUT_FOLDER=         # Preferred output location for result files
 
-OUTPUT_FOLDER: Path to preferred location for .txt files
+SPECIFIER_LLM=         # GPT model for Specifier Agent
+SPECIFIER_REASON_EFFORT=
 
-SPECIFIER_LLM: Preffered GPT-model for Specifier Agent
-SPECIFIER_REASON_EFFORT: Reasoning level for the agent
+SELECTOR_LLM=          # GPT model for Selector Agent
+SELECTOR_REASON_EFFORT=
 
-SELECTOR_LLM: Preffered GPT-model for Selector Agent
-SELECTOR_REASON_EFFORT: Reasoning level for the agent
+DECOMPOSER_LLM=        # GPT model for Decomposer Agent
+DECOMPOSER_REASON_EFFORT=
 
-DECOMPOSER_LLM: Preffered GPT-model for Decomposer Agent
-DECOMPOSER_REASON_EFFORT: Reasoning level for the agent
+BUILDER_LLM=           # GPT model for Builder Agent
+BUILDER_REASON_EFFORT=
 
-BUILDER_LLM: Preferred GPT-model for Builder Agent
-BUILDER_REASON_EFFORT: Reasoning level for the agent
+REFINER_LLM=           # GPT model for Refiner Agent
+REFINER_REASON_EFFORT=
 
-REFINER_LLM: Preffered GPT-model for Refiner Agent
-REFINER_REASON_EFFORT: Reasoning level for the agent
-
-USE_DEBUGGER: Boolean to enable/disable debugging
-DEBUGGER_LLM: Preffered GPT-model for Debugger Agent
-DEBUGGER_REASON_EFFORT: Reasoning level for the agent
+USE_DEBUGGER=          # True/False — enable automatic plan debugging
+DEBUGGER_LLM=          # GPT model for Debugger Agent
+DEBUGGER_REASON_EFFORT=
+MAX_ITR=               # Max debug iterations (default: 5)
+```
 
 # Recommendation
-We recommend generating schemas for your data sources. Preferredably using the "load_schemas" tool during server initialization.
+We recommend pre-generating schemas for your data sources before running queries. This can be done by running the schema loader utility directly:
+
+```bash
+python -c "from ai_wayang_multi.utils.schema_loader import SchemaLoader; SchemaLoader().load_all()"
+```
