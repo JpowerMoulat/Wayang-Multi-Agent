@@ -1,4 +1,4 @@
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 from ai_wayang_multi.config.settings import SELECTOR_AGENT_CONFIG
 from ai_wayang_multi.llm.prompt_loader import PromptLoader
 from ai_wayang_multi.llm.models import DataSources
@@ -16,7 +16,6 @@ class Selector:
         reasoning: str | None = None,
         system_prompt: str | None = None,
     ):
-        self.client = OpenAI()
         self.model = model or SELECTOR_AGENT_CONFIG.get("model")
         self.reasoning = reasoning or SELECTOR_AGENT_CONFIG.get("reason_effort")
         self.system_prompt = (
@@ -59,17 +58,10 @@ class Selector:
         # Append user prompt to chat
         self.chat.append({"role": "user", "content": prompt})
 
-        # Defines params and structured format for the model
-        params = {"model": self.model, "input": self.chat, "text_format": DataSources}
-
-        # Set effort if reasoning model
-        effort = self.reasoning
-
-        if effort:
-            params["reasoning"] = {"effort": effort}
-
-        # Generate response
-        response = self.client.responses.parse(**params)
+        # Build LLM (lazy so set_model_and_reasoning takes effect)
+        model_kwargs = {"reasoning_effort": self.reasoning} if self.reasoning else {}
+        llm = ChatOpenAI(model=self.model, model_kwargs=model_kwargs)
+        result = llm.with_structured_output(DataSources, include_raw=True).invoke(self.chat)
 
         # Return response
-        return {"raw": response, "selected_data": response.output_parsed}
+        return {"raw": result["raw"], "selected_data": result["parsed"]}

@@ -1,4 +1,4 @@
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 from typing import List
 from ai_wayang_multi.config.settings import DEBUGGER_AGENT_CONFIG
 from ai_wayang_multi.llm.prompt_loader import PromptLoader
@@ -19,7 +19,6 @@ class Debugger:
         system_prompt: str | None = None,
         version: int | None = None,
     ):
-        self.client = OpenAI()
         self.model = model or DEBUGGER_AGENT_CONFIG.get("model")
         self.reasoning = reasoning or DEBUGGER_AGENT_CONFIG.get("reason_effort")
         self.system_prompt = (
@@ -105,24 +104,17 @@ class Debugger:
         # Add user prompt to chat
         self.chat.append({"role": "user", "content": prompt})
 
-        # Add model and current chat
-        params = {"model": self.model, "input": self.chat, "text_format": WayangPlan}
-
-        # Initialize effort
-        effort = self.reasoning
-
-        if effort:
-            params["reasoning"] = {"effort": effort}
-
-        # Generate response
-        response = self.client.responses.parse(**params)
+        # Build LLM (lazy so set_model_and_reasoning takes effect)
+        model_kwargs = {"reasoning_effort": self.reasoning} if self.reasoning else {}
+        llm = ChatOpenAI(model=self.model, model_kwargs=model_kwargs)
+        result = llm.with_structured_output(WayangPlan, include_raw=True).invoke(self.chat)
 
         # Format text answer from agent
-        wayang_plan = response.output_parsed
+        wayang_plan = result["parsed"]
         answer = PromptLoader().load_debugger_answer(wayang_plan)
 
         # Add agent answer to chat - necessary if another debug iteration is needed
         self.chat.append({"role": "assistant", "content": answer})
 
         # Return output
-        return {"raw": response, "wayang_plan": wayang_plan, "version": self.version}
+        return {"raw": result["raw"], "wayang_plan": wayang_plan, "version": self.version}

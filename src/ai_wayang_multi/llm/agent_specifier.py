@@ -1,4 +1,4 @@
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 from ai_wayang_multi.config.settings import SPECIFIER_AGENT_CONFIG
 from ai_wayang_multi.llm.prompt_loader import PromptLoader
 
@@ -15,7 +15,6 @@ class Specifier:
         reasoning: str | None = None,
         system_prompt: str | None = None,
     ):
-        self.client = OpenAI()
         self.model = model or SPECIFIER_AGENT_CONFIG.get("model")
         self.reasoning = reasoning or SPECIFIER_AGENT_CONFIG.get("reason_effort")
         self.system_prompt = (
@@ -58,17 +57,12 @@ class Specifier:
         # Append user prompt to chat
         self.chat.append({"role": "user", "content": prompt})
 
-        # Defines params and structured format for the model
-        params = {"model": self.model, "input": self.chat}
-
-        # Set effort if reasoning model
-        effort = self.reasoning
-
-        if effort:
-            params["reasoning"] = {"effort": effort}
+        # Build LLM (lazy so set_model_and_reasoning takes effect)
+        model_kwargs = {"reasoning_effort": self.reasoning} if self.reasoning else {}
+        llm = ChatOpenAI(model=self.model, model_kwargs=model_kwargs)
 
         # Generate response
-        response = self.client.responses.parse(**params)
+        result = llm.invoke(self.chat)
 
         # Return response
-        return {"raw": response, "refined_query": response.output_text}
+        return {"raw": result, "refined_query": result.content}

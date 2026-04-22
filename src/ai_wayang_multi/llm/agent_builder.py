@@ -1,4 +1,4 @@
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 from ai_wayang_multi.config.settings import BUILDER_AGENT_CONFIG
 from typing import List
 from ai_wayang_multi.llm.models import WayangPlan, Step
@@ -17,7 +17,6 @@ class Builder:
         reasoning: str | None = None,
         system_prompt: str | None = None,
     ):
-        self.client = OpenAI()
         self.model = model or BUILDER_AGENT_CONFIG.get("model")
         self.reasoning = reasoning or BUILDER_AGENT_CONFIG.get("reason_effort")
         self.system_prompt = system_prompt or None
@@ -73,17 +72,10 @@ class Builder:
         # Append to this chat for this builder
         this_chat.append({"role": "user", "content": prompt})
 
-        # Defines params and structured format for the model
-        params = {"model": self.model, "input": this_chat, "text_format": WayangPlan}
-
-        # Set effort if reasoning model
-        effort = self.reasoning
-
-        if effort:
-            params["reasoning"] = {"effort": effort}
-
-        # Generate response
-        response = self.client.responses.parse(**params)
+        # Build LLM (lazy so set_model_and_reasoning takes effect)
+        model_kwargs = {"reasoning_effort": self.reasoning} if self.reasoning else {}
+        llm = ChatOpenAI(model=self.model, model_kwargs=model_kwargs)
+        result = llm.with_structured_output(WayangPlan, include_raw=True).invoke(this_chat)
 
         # Return response
-        return {"raw": response, "wayang_subplan": response.output_parsed}
+        return {"raw": result["raw"], "wayang_subplan": result["parsed"]}

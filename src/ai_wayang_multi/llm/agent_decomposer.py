@@ -1,4 +1,4 @@
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 from ai_wayang_multi.config.settings import DECOMPOSER_AGENT_CONFIG
 from ai_wayang_multi.llm.prompt_loader import PromptLoader
 from ai_wayang_multi.llm.models import DataSources, WayangPlanHighLevel
@@ -16,7 +16,6 @@ class Decomposer:
         reasoning: str | None = None,
         system_prompt: str | None = None,
     ):
-        self.client = OpenAI()
         self.model = model or DECOMPOSER_AGENT_CONFIG.get("model")
         self.reasoning = reasoning or DECOMPOSER_AGENT_CONFIG.get("reason_effort")
         self.system_prompt = (
@@ -63,21 +62,10 @@ class Decomposer:
         # Append user prompt to chat
         self.chat.append({"role": "user", "content": prompt})
 
-        # Defines params and structured format for the model
-        params = {
-            "model": self.model,
-            "input": self.chat,
-            "text_format": WayangPlanHighLevel,
-        }
-
-        # Set effort if reasoning model
-        effort = self.reasoning
-
-        if effort:
-            params["reasoning"] = {"effort": effort}
-
-        # Generate response
-        response = self.client.responses.parse(**params)
+        # Build LLM (lazy so set_model_and_reasoning takes effect)
+        model_kwargs = {"reasoning_effort": self.reasoning} if self.reasoning else {}
+        llm = ChatOpenAI(model=self.model, model_kwargs=model_kwargs)
+        result = llm.with_structured_output(WayangPlanHighLevel, include_raw=True).invoke(self.chat)
 
         # Return response
-        return {"raw": response, "response": response.output_parsed}
+        return {"raw": result["raw"], "response": result["parsed"]}
