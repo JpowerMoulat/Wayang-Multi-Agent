@@ -3,7 +3,8 @@ A multi-agent system for translating natural-language queries into executable Ap
 
 The system is implemented as a LangGraph pipeline orchestrated via a CLI interface. Six specialized agents (Specifier, Selector, Decomposer, Builder, Refiner, Debugger) collaborate to produce and execute a Wayang JSON plan against a running Apache Wayang JSON-REST API server.
 
-The system was developed as part of the Master Thesis **"Agent-Based Systems for Apache Wayang Plan"**. For a deeper understanding of the system, we recommend reading the thesis report.
+The system was developed as part of the Research Project **"Comparing Agentic AI Frameworks for Natural Language
+Wayang Queries"**. For a deeper understanding of the system, we recommend reading the report.
 
 # Start
 Run the pipeline interactively:
